@@ -83,7 +83,6 @@ async function getCartsData() {
       `${VITE_APP_URL}/customer/${VITE_APP_PATH}/carts`
     );
     cartsData = res.data.carts;
-    console.log(cartsData);
   } catch (error) {
     console.error("Error fetching products data:", error);
   }
@@ -121,7 +120,7 @@ async function renderCartsTable() {
     <td>${cart.quantity}</td>
     <td>NT$${cart.product.price.toLocaleString()}</td>
     <td class="discardBtn">
-      <a href="#" class="material-icons"> clear </a>
+      <a href="#" class="material-icons" data-id="${cart.id}"> clear </a>
     </td>
   </tr>`;
   });
@@ -143,6 +142,7 @@ async function renderCartsTable() {
     shoppingCartTable.innerHTML = "您的購物車是空的，趕快逛逛本季新品吧";
   } else {
     shoppingCartTable.innerHTML = shoppingCartList;
+    deleteCartsItem();
     deleteCartsAll();
   }
 }
@@ -190,8 +190,6 @@ function deleteCartsAll() {
 
   discardAllBtn.addEventListener("click", function (e) {
     e.preventDefault();
-    // let productId = e.target.dataset.id;
-
     Swal.fire({
       title: "您確定要刪除所有品項?",
       text: "刪除後無法回復!",
@@ -207,8 +205,6 @@ function deleteCartsAll() {
             `${VITE_APP_URL}/customer/${VITE_APP_PATH}/carts`
           );
           shoppingCartTable.innerHTML = "您的購物車是空的，趕快逛逛本季新品吧";
-
-          console.log("res", res);
         } catch (error) {
           console.log("Error fetching products data:", error);
         }
@@ -224,42 +220,24 @@ function deleteCartsAll() {
 
 // // -刪除購物車 -單筆
 function deleteCartsItem() {
-  const discardAllBtn = document.querySelector(".discardAllBtn");
+  const discardBtns = document.querySelectorAll(".discardBtn");
+  discardBtns.forEach((discardBtn) => {
+    discardBtn.addEventListener("click", async function (e) {
+      let productId = e.target.dataset.id;
+      e.preventDefault();
+      try {
+        const res = await axios.delete(
+          `${VITE_APP_URL}/customer/${VITE_APP_PATH}/carts/${productId}`
+        );
 
-  discardAllBtn.addEventListener("click", function (e) {
-    e.preventDefault();
-    // let productId = e.target.dataset.id;
-
-    Swal.fire({
-      title: "您確定要刪除該品項?",
-      text: "刪除後無法回復!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#6a33f8",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "確定",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        try {
-          const res = axios.delete(
-            `${VITE_APP_URL}/customer/${VITE_APP_PATH}/carts`
-          );
-
-          shoppingCartTable.innerHTML = "您的購物車是空的，趕快逛逛本季新品吧";
-
-          // console.log("res", res);
-        } catch (error) {
-          console.log("Error fetching products data:", error);
-        }
-
-        Swal.fire({
-          title: "您的購物車已清空",
-          icon: "success",
-        });
+        renderCartsTable();
+      } catch (error) {
+        console.log("Error fetching products data:", error);
       }
     });
   });
 }
+
 // TODO:
 // 1. 數量會覆蓋過去，怎麼修改:
 // 取得該產品原本的 quantity 後，再做加減
