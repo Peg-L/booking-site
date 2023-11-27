@@ -288,7 +288,7 @@ body {
 
 .banner {
   position: relative;
-  background-image: url("https://github.com/hexschool/js-training/blob/main/%E7%AC%AC%E4%B9%9D%E9%80%B1%E4%B8%BB%E7%B7%9A%E4%BB%BB%E5%8B%99%E5%9C%96%E5%BA%AB/3ewLAKn.png?raw=true");
+  background-image: url("https://i.imgur.com/3ewLAKn.png");
   background-position: center center;
   background-repeat: no-repeat;
   background-size: cover;
@@ -887,36 +887,10 @@ body {
   opacity: 0.8;
 }
 
-.orderStatus {
-  position: relative;
-}
-
 .orderStatus a {
-  position: absolute;
   padding: 10px;
-  top: 0;
-  bottom: 0;
-  right: 0;
-  left: 0;
   display: block;
-  text-decoration: none;
-  color: #ffffff;
-}
-
-.orderStatus-unDone {
-  background-color: #747474;
-}
-
-.orderStatus-unDone:hover {
-  background-color: #000000;
-}
-
-.orderStatus-done {
-  background-color: #000000;
-}
-
-.orderStatus-done:hover {
-  background-color: #747474;
+  color: #0067ce;
 }
 
 .orderTableWrap {

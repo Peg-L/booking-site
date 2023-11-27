@@ -1,3 +1,3 @@
-import './assets/scss/all.scss';
-
-console.log("Hello world!");
+import "./assets/scss/all.scss";
+import "./assets/js/index";
+import "./assets/js/admin";
