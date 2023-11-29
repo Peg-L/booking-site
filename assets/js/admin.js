@@ -10,7 +10,6 @@ async function getOrdersData() {
   try {
     const res = await axios.get(url, headers);
     ordersData = res.data.orders;
-    console.log(ordersData);
   } catch (error) {
     console.error("Error fetching products data:", error);
   }
@@ -75,7 +74,6 @@ discardAllBtn.addEventListener("click", deleteAllOrders);
 function deleteAllOrders() {
   try {
     const res = axios.delete(url, headers);
-    console.log(res);
     renderOrdersTable();
   } catch (error) {
     console.log(error);
@@ -95,7 +93,7 @@ async function delSingleOrder(id) {
     const res = await axios.delete(`${url}/${id}`, headers);
     renderOrdersTable();
   } catch (error) {
-    console.log(error);
+    console.error("Error fetching products data:", error);
   }
 }
 
