@@ -931,3 +931,21 @@ body {
   display: none;
 }
 /*# sourceMappingURL=all.css.map */
+
+.footer {
+  background-color: #000;
+  height: 80px;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 18px;
+  a {
+    text-decoration: none;
+    color: #fff;
+
+    &:hover {
+      color: #6a33f8;
+    }
+  }
+}
