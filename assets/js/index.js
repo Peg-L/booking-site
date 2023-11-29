@@ -44,7 +44,6 @@ function renderProductsList() {
   </li>`;
   });
   productWrap.innerHTML = productListEl;
-
   addToCarts();
 }
 
@@ -90,6 +89,7 @@ async function getCartsData() {
 
 // 渲染我的購物車
 const shoppingCartTable = document.querySelector(".shoppingCart-table");
+
 async function renderCartsTable() {
   // 取得購物車內容
   await getCartsData();
@@ -107,8 +107,8 @@ async function renderCartsTable() {
 </tr>`;
 
   cartsData.forEach((cart) => {
-    // console.log(cart);
     total += cart.product.price;
+
     shoppingCartList += `<tr>
     <td>
       <div class="cardItem-title">
@@ -124,7 +124,6 @@ async function renderCartsTable() {
     </td>
   </tr>`;
   });
-  // console.log(total);
 
   shoppingCartList += `<tr>
   <td>
@@ -150,10 +149,19 @@ async function renderCartsTable() {
 // -加入購物車
 function addToCarts() {
   const addCardBtns = document.querySelectorAll(".addCardBtn");
+
   addCardBtns.forEach((addCardBtn) => {
     addCardBtn.addEventListener("click", async function (e) {
       e.preventDefault();
+
+      getCartsData();
+      let quantity = 0;
+
       let productId = e.target.dataset.id;
+
+      quantity =
+        cartsData.filter((item) => item.product.id == productId)[0]?.quantity ??
+        0;
 
       try {
         const res = await axios.post(
@@ -161,22 +169,30 @@ function addToCarts() {
           {
             data: {
               productId: productId,
-              quantity: 1,
+              quantity: quantity + 1,
             },
           }
         );
-        Swal.fire({
+
+        const Toast = Swal.mixin({
+          toast: true,
           position: "top-end",
-          icon: "success",
-          title: "加入購物車",
           showConfirmButton: false,
           timer: 1000,
-          // width: 400,
+          width: 240,
+          didOpen: (toast) => {
+            toast.onmouseenter = Swal.stopTimer;
+            toast.onmouseleave = Swal.resumeTimer;
+          },
+        });
+
+        Toast.fire({
+          icon: "success",
+          title: "加入購物車",
         });
 
         // 重新渲染
         renderCartsTable();
-        // console.log(res.data.carts);
       } catch (error) {
         console.log("Error fetching products data:", error);
       }
@@ -238,9 +254,50 @@ function deleteCartsItem() {
   });
 }
 
-// TODO:
-// 1. 數量會覆蓋過去，怎麼修改:
-// 取得該產品原本的 quantity 後，再做加減
+// 送出訂單
+const orderInfoBtn = document.querySelector(".orderInfo-btn");
+const orderInfoForm = document.querySelector(".orderInfo-form");
+let formvalue = {};
 
-// 2. 必填
-// 不要"必填"文字，改成 * 號
+// 取得欄位值
+function getValues(e) {
+  const form = e.target.form;
+  formvalue = {
+    name: form.姓名.value,
+    tel: form.電話.value,
+    email: form.Email.value,
+    address: form.寄送地址.value,
+    payment: form.交易方式.value,
+  };
+}
+
+async function placeOrders() {
+  try {
+    console.log();
+
+    const res = await axios.post(
+      `${VITE_APP_URL}/customer/${VITE_APP_PATH}/orders`,
+      {
+        data: {
+          user: formvalue,
+        },
+      }
+    );
+
+    renderCartsTable();
+    Swal.fire({
+      title: "訂購成功!",
+      icon: "success",
+    });
+
+    orderInfoForm.reset();
+  } catch (error) {
+    console.error("Error fetching products data:", error);
+  }
+}
+
+orderInfoBtn.addEventListener("click", function (e) {
+  e.preventDefault();
+  getValues(e);
+  placeOrders();
+});
