@@ -50,10 +50,12 @@ async function renderOrdersTable() {
     </td>
     <td>${dateStr}</td>
     <td class="orderStatus">
-      <a href="#">${item.paid ? "已處理" : "未處理"}</a>
+      <a href="#"  data-button="status" data-id="${item.id}" data-paid="${
+      item.paid
+    }">${item.paid ? "已處理" : "未處理"}</a>
     </td>
     <td>
-      <input type="button" class="delSingleOrder-Btn" value="刪除" data-id="${
+      <input type="button" class="delSingleOrder-Btn" value="刪除" data-button="del" data-id="${
         item.id
       }" />
     </td>
@@ -64,6 +66,8 @@ async function renderOrdersTable() {
     ordersData.length > 0
       ? ordersDataStr
       : "<p style='padding: 12px'>目前沒有訂單資料</p>";
+
+  sortOrderData();
 }
 renderOrdersTable();
 
@@ -71,7 +75,8 @@ renderOrdersTable();
 const discardAllBtn = document.querySelector(".discardAllBtn");
 discardAllBtn.addEventListener("click", deleteAllOrders);
 
-function deleteAllOrders() {
+function deleteAllOrders(e) {
+  e.preventDefault();
   try {
     const res = axios.delete(url, headers);
     renderOrdersTable();
@@ -80,14 +85,21 @@ function deleteAllOrders() {
   }
 }
 
+// 監聽按鈕 (訂單狀態 & 刪除)
 ordersDataWrap.addEventListener("click", (e) => {
   e.preventDefault();
-  const orderId = e.target.dataset.id;
-  if (orderId) {
-    delSingleOrder(orderId);
+
+  const { id, button } = e.target.dataset;
+
+  if (button == "del") {
+    delSingleOrder(id);
+  } else if (button == "status") {
+    const { paid } = e.target.dataset;
+    updateOrderStatus(id, paid === "true");
   }
 });
 
+// 清除單筆訂單
 async function delSingleOrder(id) {
   try {
     const res = await axios.delete(`${url}/${id}`, headers);
@@ -97,22 +109,88 @@ async function delSingleOrder(id) {
   }
 }
 
+// 修改訂單狀態
+async function updateOrderStatus(id, paidStatus) {
+  try {
+    console.log(id, paidStatus);
+
+    const res = await axios.put(
+      url,
+      {
+        data: {
+          id: id,
+          paid: !paidStatus,
+        },
+      },
+      headers
+    );
+    console.log(res);
+
+    renderOrdersTable();
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+// render C3 LV2
+function sortOrderData() {
+  console.log(ordersData);
+  let total = {};
+
+  ordersData.forEach((item) => {
+    item.products.forEach((productItem) => {
+      if (total[productItem.title] == undefined) {
+        total[productItem.title] = productItem.price * productItem.quantity;
+      } else {
+        total[productItem.title] += productItem.price * productItem.quantity;
+      }
+    });
+  });
+  console.log(total);
+
+  // 資料格式調整
+  let columnsData = [];
+  let productItems = Object.keys(total);
+  productItems.forEach((productItem) => {
+    let ary = [];
+    ary.push(productItem);
+    ary.push(total[productItem]);
+    columnsData.push(ary);
+  });
+
+  // 排序
+  columnsData.sort((a, b) => b[1] - a[1]); // 大到小: b - a
+  console.log(columnsData);
+
+  let newData = [];
+  let others = ["其他", 0];
+  columnsData.forEach((item, index) => {
+    if (index < 3) {
+      newData.push(item);
+      console.log(newData);
+    } else {
+      others[1] += item[1];
+    }
+  });
+  newData.push(others);
+
+  renderC3(newData);
+}
+
 // C3.js
-let chart = c3.generate({
-  bindto: "#chart", // HTML 元素綁定
-  data: {
-    type: "pie",
-    columns: [
-      ["Louvre 雙人床架", 1],
-      ["Antony 雙人床架", 2],
-      ["Anty 雙人床架", 3],
-      ["其他", 4],
-    ],
-    colors: {
-      "Louvre 雙人床架": "#DACBFF",
-      "Antony 雙人床架": "#9D7FEA",
-      "Anty 雙人床架": "#5434A7",
-      其他: "#301E5F",
+function renderC3(data) {
+  let colorList = ["#301E5F", "#5434A7", "#9D7FEA", "#DACBFF"];
+  let colorSetting = {};
+  data.forEach((item, index) => {
+    colorSetting[item[0]] = colorList[index];
+  });
+
+  let chart = c3.generate({
+    bindto: "#chart", // HTML 元素綁定
+    data: {
+      type: "pie",
+      columns: data,
+      colors: colorSetting,
     },
-  },
-});
+  });
+}
