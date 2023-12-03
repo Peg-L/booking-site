@@ -949,3 +949,17 @@ body {
     }
   }
 }
+
+.calc-quantity {
+  border: none;
+  background-color: #f8f8f8;
+}
+
+.fa-solid:hover {
+  color: #6a33ff !important;
+  cursor: pointer;
+}
+
+.quantity-num {
+  padding: 12px;
+}

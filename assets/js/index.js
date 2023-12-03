@@ -45,6 +45,7 @@ function renderProductsList() {
   });
   productWrap.innerHTML = productListEl;
   addToCarts();
+  calcQuantity();
 }
 
 // -產品類別篩選
@@ -67,33 +68,31 @@ function filterProducts() {
   });
 }
 
-//// 處理加入購物車
-function handleCarts() {
-  getCartsData();
-  renderCartsTable();
-}
-handleCarts();
-
+// ----- 購物車 -------
 let cartsData = [];
-//  -取得購物車
+//  -取得購物車資料
 async function getCartsData() {
   try {
     const res = await axios.get(
       `${VITE_APP_URL}/customer/${VITE_APP_PATH}/carts`
     );
     cartsData = res.data.carts;
+
+    renderCartsTable();
+    if (cartsData.length !== 0) {
+      deleteCartsAll();
+      deleteCartsItem();
+    }
   } catch (error) {
     console.error("Error fetching products data:", error);
   }
 }
+getCartsData();
 
 // 渲染我的購物車
 const shoppingCartTable = document.querySelector(".shoppingCart-table");
 
-async function renderCartsTable() {
-  // 取得購物車內容
-  await getCartsData();
-
+function renderCartsTable() {
   // 總金額
   let total = 0;
 
@@ -107,7 +106,8 @@ async function renderCartsTable() {
 </tr>`;
 
   cartsData.forEach((cart) => {
-    total += cart.product.price;
+    let itemTotal = cart.product.price * cart.quantity;
+    total += itemTotal;
 
     shoppingCartList += `<tr>
     <td>
@@ -117,8 +117,14 @@ async function renderCartsTable() {
       </div>
     </td>
     <td>NT$${cart.product.price.toLocaleString()}</td>
-    <td>${cart.quantity}</td>
-    <td>NT$${cart.product.price.toLocaleString()}</td>
+    <td id="calc-quantity"><button class="calc-quantity minus-quantity"><i class="fa-solid fa-square-minus fa-2xl" style="color: #301e5f;" data-id="${
+      cart.id
+    }"></i></button><span class="quantity-num">${
+      cart.quantity
+    }</span><button class="calc-quantity plus-quantity"><i class="fa-solid fa-square-plus fa-2xl" style="color: #301e5f;" data-id="${
+      cart.id
+    }"></i></button></td>
+    <td>NT$${itemTotal.toLocaleString()}</td>
     <td class="discardBtn">
       <a href="#" class="material-icons" data-id="${cart.id}"> clear </a>
     </td>
@@ -141,12 +147,10 @@ async function renderCartsTable() {
     shoppingCartTable.innerHTML = "您的購物車是空的，趕快逛逛本季新品吧";
   } else {
     shoppingCartTable.innerHTML = shoppingCartList;
-    deleteCartsItem();
-    deleteCartsAll();
   }
 }
 
-// -加入購物車
+// // -加入購物車
 function addToCarts() {
   const addCardBtns = document.querySelectorAll(".addCardBtn");
 
@@ -154,7 +158,6 @@ function addToCarts() {
     addCardBtn.addEventListener("click", async function (e) {
       e.preventDefault();
 
-      getCartsData();
       let quantity = 0;
 
       let productId = e.target.dataset.id;
@@ -163,17 +166,20 @@ function addToCarts() {
         cartsData.filter((item) => item.product.id == productId)[0]?.quantity ??
         0;
 
+      quantity++;
       try {
         const res = await axios.post(
           `${VITE_APP_URL}/customer/${VITE_APP_PATH}/carts`,
           {
             data: {
               productId: productId,
-              quantity: quantity + 1,
+              quantity: quantity,
             },
           }
         );
+        getCartsData();
 
+        // 顯示加入成功 modal
         const Toast = Swal.mixin({
           toast: true,
           position: "top-end",
@@ -185,18 +191,48 @@ function addToCarts() {
             toast.onmouseleave = Swal.resumeTimer;
           },
         });
-
         Toast.fire({
           icon: "success",
           title: "加入購物車",
         });
-
-        // 重新渲染
-        renderCartsTable();
       } catch (error) {
         console.log("Error fetching products data:", error);
       }
     });
+  });
+}
+
+// // -數量加減
+function calcQuantity() {
+  shoppingCartTable.addEventListener("click", async function (e) {
+    e.preventDefault();
+
+    let productId = e.target.dataset.id;
+    let quantity = cartsData.filter((item) => item.id == productId)[0]
+      ?.quantity;
+
+    const calcBtn = e.target.classList;
+    if (calcBtn.contains("fa-square-minus") && quantity > 1) {
+      quantity--;
+    } else if (calcBtn.contains("fa-square-plus")) {
+      quantity++;
+    }
+
+    try {
+      const res = await axios.patch(
+        `${VITE_APP_URL}/customer/${VITE_APP_PATH}/carts`,
+        {
+          data: {
+            id: productId,
+            quantity: quantity,
+          },
+        }
+      );
+
+      getCartsData();
+    } catch (error) {
+      console.log("Error fetching products data:", error);
+    }
   });
 }
 
@@ -214,13 +250,14 @@ function deleteCartsAll() {
       confirmButtonColor: "#6a33f8",
       cancelButtonColor: "#d33",
       confirmButtonText: "確定",
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const res = axios.delete(
+          const res = await axios.delete(
             `${VITE_APP_URL}/customer/${VITE_APP_PATH}/carts`
           );
-          shoppingCartTable.innerHTML = "您的購物車是空的，趕快逛逛本季新品吧";
+
+          getCartsData();
         } catch (error) {
           console.log("Error fetching products data:", error);
         }
@@ -238,18 +275,36 @@ function deleteCartsAll() {
 function deleteCartsItem() {
   const discardBtns = document.querySelectorAll(".discardBtn");
   discardBtns.forEach((discardBtn) => {
-    discardBtn.addEventListener("click", async function (e) {
-      let productId = e.target.dataset.id;
+    discardBtn.addEventListener("click", function (e) {
       e.preventDefault();
-      try {
-        const res = await axios.delete(
-          `${VITE_APP_URL}/customer/${VITE_APP_PATH}/carts/${productId}`
-        );
+      let productId = e.target.dataset.id;
 
-        renderCartsTable();
-      } catch (error) {
-        console.log("Error fetching products data:", error);
-      }
+      Swal.fire({
+        title: "您確定要刪除該品項?",
+        text: "刪除後無法回復!",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#6a33f8",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "確定",
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          try {
+            const res = await axios.delete(
+              `${VITE_APP_URL}/customer/${VITE_APP_PATH}/carts/${productId}`
+            );
+          } catch (error) {
+            console.log("Error fetching products data:", error);
+          }
+
+          getCartsData();
+
+          Swal.fire({
+            title: "該品項已刪除",
+            icon: "success",
+          });
+        }
+      });
     });
   });
 }
@@ -273,8 +328,6 @@ function getValues(e) {
 
 async function placeOrders() {
   try {
-    console.log();
-
     const res = await axios.post(
       `${VITE_APP_URL}/customer/${VITE_APP_PATH}/orders`,
       {
@@ -301,3 +354,6 @@ orderInfoBtn.addEventListener("click", function (e) {
   getValues(e);
   placeOrders();
 });
+
+// TODO:
+// * 刪除單一品項有問題
