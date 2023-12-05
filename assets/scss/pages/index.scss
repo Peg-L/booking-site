@@ -805,12 +805,8 @@ body {
 }
 
 .orderInfo-message {
-  position: absolute;
-  white-space: nowrap;
-  left: 103%;
-  top: 50%;
-  -webkit-transform: translateY(-50%);
-  transform: translateY(-50%);
+  margin-top: 4px;
+  font-size: 14px;
   color: #c72424;
 }
 
@@ -962,4 +958,13 @@ body {
 
 .quantity-num {
   padding: 12px;
+}
+
+.required {
+  color: #c72424;
+}
+
+.orderInfo-btn.disabled {
+  cursor: not-allowed;
+  background-color: lightgray;
 }

@@ -14,7 +14,6 @@ async function getOrdersData() {
     console.error("Error fetching products data:", error);
   }
 }
-// getOrdersData();
 
 // 渲染表格
 const ordersDataWrap = document.querySelector(".ordersDataWrap");
@@ -73,7 +72,21 @@ renderOrdersTable();
 
 // 清除所有訂單
 const discardAllBtn = document.querySelector(".discardAllBtn");
-discardAllBtn.addEventListener("click", deleteAllOrders);
+discardAllBtn.addEventListener("click", function (e) {
+  Swal.fire({
+    title: "您確定要刪除所有訂單?",
+    text: "刪除後無法回復!",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#6a33f8",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "確定",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      deleteAllOrders(e);
+    }
+  });
+});
 
 function deleteAllOrders(e) {
   e.preventDefault();
@@ -92,7 +105,19 @@ ordersDataWrap.addEventListener("click", (e) => {
   const { id, button } = e.target.dataset;
 
   if (button == "del") {
-    delSingleOrder(id);
+    Swal.fire({
+      title: "您確定要刪除此訂單?",
+      text: "刪除後無法回復!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#6a33f8",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "確定",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        delSingleOrder(id);
+      }
+    });
   } else if (button == "status") {
     const { paid } = e.target.dataset;
     updateOrderStatus(id, paid === "true");
@@ -112,8 +137,6 @@ async function delSingleOrder(id) {
 // 修改訂單狀態
 async function updateOrderStatus(id, paidStatus) {
   try {
-    console.log(id, paidStatus);
-
     const res = await axios.put(
       url,
       {
@@ -124,7 +147,6 @@ async function updateOrderStatus(id, paidStatus) {
       },
       headers
     );
-    console.log(res);
 
     renderOrdersTable();
   } catch (error) {
@@ -146,7 +168,6 @@ function sortOrderData() {
       }
     });
   });
-  console.log(total);
 
   // 資料格式調整
   let columnsData = [];
@@ -160,14 +181,12 @@ function sortOrderData() {
 
   // 排序
   columnsData.sort((a, b) => b[1] - a[1]); // 大到小: b - a
-  console.log(columnsData);
 
   let newData = [];
   let others = ["其他", 0];
   columnsData.forEach((item, index) => {
     if (index < 3) {
       newData.push(item);
-      console.log(newData);
     } else {
       others[1] += item[1];
     }

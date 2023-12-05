@@ -1,4 +1,4 @@
-const { VITE_APP_URL, VITE_APP_PATH, VITE_APP_KEY } = import.meta.env;
+const { VITE_APP_URL, VITE_APP_PATH } = import.meta.env;
 
 const productWrap = document.querySelector(".productWrap");
 let productsData = [];
@@ -45,7 +45,6 @@ function renderProductsList() {
   });
   productWrap.innerHTML = productListEl;
   addToCarts();
-  calcQuantity();
 }
 
 // -產品類別篩選
@@ -79,6 +78,8 @@ async function getCartsData() {
     cartsData = res.data.carts;
 
     renderCartsTable();
+    calcQuantity();
+
     if (cartsData.length !== 0) {
       deleteCartsAll();
       deleteCartsItem();
@@ -109,7 +110,7 @@ function renderCartsTable() {
     let itemTotal = cart.product.price * cart.quantity;
     total += itemTotal;
 
-    shoppingCartList += `<tr>
+    shoppingCartList += `<tr data-id="${cart.id}">
     <td>
       <div class="cardItem-title">
         <img src="${cart.product.images}" alt="${cart.product.title}" />
@@ -124,7 +125,7 @@ function renderCartsTable() {
     }</span><button class="calc-quantity plus-quantity"><i class="fa-solid fa-square-plus fa-2xl" style="color: #301e5f;" data-id="${
       cart.id
     }"></i></button></td>
-    <td>NT$${itemTotal.toLocaleString()}</td>
+    <td class="item-total">NT$${itemTotal.toLocaleString()}</td>
     <td class="discardBtn">
       <a href="#" class="material-icons" data-id="${cart.id}"> clear </a>
     </td>
@@ -140,7 +141,7 @@ function renderCartsTable() {
   <td>
     <p>總金額</p>
   </td>
-  <td>NT$${total.toLocaleString()}</td>
+  <td class="totalPrice">NT$${total.toLocaleString()}</td>
 </tr>`;
 
   if (cartsData.length == 0) {
@@ -203,23 +204,59 @@ function addToCarts() {
 }
 
 // // -數量加減
+
 function calcQuantity() {
-  shoppingCartTable.addEventListener("click", async function (e) {
-    e.preventDefault();
+  // 在渲染完整個 shoppingCartList 後，為每個按鈕添加事件監聽器
+  document
+    .querySelectorAll(".fa-square-minus, .fa-square-plus")
+    .forEach((btn) => {
+      btn.addEventListener("click", function () {
+        const totalPriceElement = document.querySelector(`td.totalPrice`);
 
-    let productId = e.target.dataset.id;
-    let quantity = cartsData.filter((item) => item.id == productId)[0]
-      ?.quantity;
+        let totalPrice = parseInt(
+          totalPriceElement.textContent.replace("NT$", "").replace(",", "")
+        );
 
-    const calcBtn = e.target.classList;
-    if (calcBtn.contains("fa-square-minus") && quantity > 1) {
-      quantity--;
-    } else if (calcBtn.contains("fa-square-plus")) {
-      quantity++;
-    }
+        const productId = btn.dataset.id;
+        const trElement = document.querySelector(`tr[data-id="${productId}"]`);
+        const quantityNum = trElement.querySelector(".quantity-num");
+        const itemTotalElement = trElement.querySelector(".item-total");
 
+        // 獲取當前數量
+        let currentQuantity = parseInt(quantityNum.textContent);
+        // 獲取單價
+        const priceString =
+          trElement.querySelector("td:nth-child(2)").textContent;
+        const price = parseInt(priceString.replace("NT$", "").replace(",", ""));
+
+        // 判斷按鈕是加還是減，並做對應運算
+        if (btn.classList.contains("fa-square-minus")) {
+          // 減少數量，且確保不小於 1
+          if (currentQuantity > 1) {
+            currentQuantity--;
+            totalPrice -= price;
+          }
+        } else if (btn.classList.contains("fa-square-plus")) {
+          // 增加數量
+          currentQuantity++;
+          totalPrice += price;
+        }
+
+        // 渲染新數量/新金額
+        quantityNum.textContent = currentQuantity;
+        const itemTotal = currentQuantity * price;
+        itemTotalElement.textContent = `NT$${itemTotal.toLocaleString()}`;
+        totalPriceElement.textContent = `NT$${totalPrice.toLocaleString()}`;
+
+        // // 更新購物車數據
+        updateCartData(productId, currentQuantity);
+      });
+    });
+
+  // 更新購物車資料
+  function updateCartData(productId, quantity) {
     try {
-      const res = await axios.patch(
+      const res = axios.patch(
         `${VITE_APP_URL}/customer/${VITE_APP_PATH}/carts`,
         {
           data: {
@@ -228,13 +265,12 @@ function calcQuantity() {
           },
         }
       );
-
-      getCartsData();
     } catch (error) {
       console.log("Error fetching products data:", error);
     }
-  });
+  }
 }
+calcQuantity();
 
 // // -刪除購物車 -全部
 function deleteCartsAll() {
@@ -310,16 +346,15 @@ function deleteCartsItem() {
 }
 
 // 送出訂單
-const orderInfoBtn = document.querySelector(".orderInfo-btn");
-const orderInfoForm = document.querySelector(".orderInfo-form");
 let formvalue = {};
 
 // 取得欄位值
 function getValues(e) {
   const form = e.target.form;
+
   formvalue = {
     name: form.姓名.value,
-    tel: form.電話.value,
+    tel: form.手機.value,
     email: form.Email.value,
     address: form.寄送地址.value,
     payment: form.交易方式.value,
@@ -337,23 +372,86 @@ async function placeOrders() {
       }
     );
 
-    renderCartsTable();
+    getCartsData();
     Swal.fire({
       title: "訂購成功!",
       icon: "success",
     });
 
-    orderInfoForm.reset();
+    form.reset();
+    orderInfoBtn.classList.add("disabled");
   } catch (error) {
     console.error("Error fetching products data:", error);
   }
 }
 
-orderInfoBtn.addEventListener("click", function (e) {
-  e.preventDefault();
-  getValues(e);
-  placeOrders();
-});
+// 表單驗證
+const pattern = /^09\d{8}$/;
+const constraints = {
+  姓名: {
+    presence: {
+      message: "為必填",
+    },
+  },
+  手機: {
+    presence: {
+      message: "為必填",
+    },
+    format: {
+      pattern: pattern,
+      message: "格式不符",
+    },
+  },
+  Email: {
+    presence: {
+      message: "為必填",
+    },
+    email: {
+      message: "格式不符",
+    },
+  },
+  寄送地址: {
+    presence: {
+      message: "為必填",
+    },
+  },
+};
+const form = document.querySelector(".orderInfo-form");
+const inputs = document.querySelectorAll(
+  "input[type=text], input[type=tel], input[type=email]"
+);
+const orderInfoBtn = document.querySelector(".orderInfo-btn");
 
-// TODO:
-// * 刪除單一品項有問題
+function formValidate() {
+  inputs.forEach((item) => {
+    item.addEventListener("change", function () {
+      item.nextElementSibling.textContent = "";
+      let errors = validate(form, constraints);
+      if (errors) {
+        Object.keys(errors).forEach(function (keys) {
+          document.querySelector(`[data-message="${keys}"]`).textContent =
+            errors[keys];
+        });
+        orderInfoBtn.classList.add("disabled");
+      } else {
+        orderInfoBtn.classList.remove("disabled");
+      }
+    });
+  });
+
+  orderInfoBtn.addEventListener("click", function (e) {
+    e.preventDefault();
+
+    if (cartsData.length == 0) {
+      Swal.fire({
+        title: "您的購物車是空的，趕快逛逛本季新品吧",
+        icon: "warning",
+      });
+      return;
+    }
+
+    getValues(e);
+    placeOrders();
+  });
+}
+formValidate();
