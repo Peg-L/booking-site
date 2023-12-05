@@ -73,6 +73,7 @@ renderOrdersTable();
 // 清除所有訂單
 const discardAllBtn = document.querySelector(".discardAllBtn");
 discardAllBtn.addEventListener("click", function (e) {
+  e.preventDefault();
   Swal.fire({
     title: "您確定要刪除所有訂單?",
     text: "刪除後無法回復!",
@@ -83,13 +84,12 @@ discardAllBtn.addEventListener("click", function (e) {
     confirmButtonText: "確定",
   }).then(async (result) => {
     if (result.isConfirmed) {
-      deleteAllOrders(e);
+      deleteAllOrders();
     }
   });
 });
 
-function deleteAllOrders(e) {
-  e.preventDefault();
+function deleteAllOrders() {
   try {
     const res = axios.delete(url, headers);
     renderOrdersTable();
